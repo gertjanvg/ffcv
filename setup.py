@@ -1,3 +1,6 @@
+import sys
+from distutils.command.build_ext import build_ext
+
 from setuptools import find_packages
 import subprocess
 from difflib import get_close_matches
@@ -77,29 +80,63 @@ def pkgconfig(package, kw):
     return kw
 
 
-sources = ['./libffcv/libffcv.cpp']
+# sources = ['./libffcv/libffcv.cpp']
+#
+# extension_kwargs = {
+#     'sources': sources,
+#     'include_dirs': []
+# }
+# if platform.system() == 'Windows':
+#     extension_kwargs = pkgconfig_windows('opencv4', extension_kwargs)
+#     extension_kwargs = pkgconfig_windows('libturbojpeg', extension_kwargs)
+#
+#     extension_kwargs = pkgconfig_windows('pthread', extension_kwargs)
+# else:
+#     try:
+#         extension_kwargs = pkgconfig('opencv4', extension_kwargs)
+#     except RuntimeError:
+#         extension_kwargs = pkgconfig('opencv', extension_kwargs)
+#     extension_kwargs = pkgconfig('libturbojpeg', extension_kwargs)
+#
+#     extension_kwargs['libraries'].append('pthread')
+#
+#
+# libffcv = Extension('ffcv._libffcv',
+#                     **extension_kwargs)
 
-extension_kwargs = {
-    'sources': sources,
-    'include_dirs': []
-}
-if platform.system() == 'Windows':
-    extension_kwargs = pkgconfig_windows('opencv4', extension_kwargs)
-    extension_kwargs = pkgconfig_windows('libturbojpeg', extension_kwargs)
-
-    extension_kwargs = pkgconfig_windows('pthread', extension_kwargs)
-else:
-    try:
-        extension_kwargs = pkgconfig('opencv4', extension_kwargs)
-    except RuntimeError:
-        extension_kwargs = pkgconfig('opencv', extension_kwargs)
-    extension_kwargs = pkgconfig('libturbojpeg', extension_kwargs)
-
-    extension_kwargs['libraries'].append('pthread')
+class CMakeExtension(Extension):
+    def __init__(self, name, cmake_lists_dir='.', sources=[], **kwa):
+        Extension.__init__(self, name, sources=sources, **kwa)
+        self.cmake_lists_dir = os.path.abspath(cmake_lists_dir)
 
 
-libffcv = Extension('ffcv._libffcv',
-                    **extension_kwargs)
+class CMakeBuild(build_ext):
+    def build_extensions(self):
+        try:
+            out = subprocess.check_output(['cmake', '--version'])
+        except OSError:
+            raise RuntimeError('Cannot find CMake executable')
+
+        for ext in self.extensions:
+            extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+
+            cmake_args = [
+                '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}'.format(extdir),
+                '-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY={}'.format(self.build_temp),
+            ]
+
+            if not os.path.exists(self.build_temp):
+                os.makedirs(self.build_temp)
+
+            # Config and build the extension
+            subprocess.check_call(['cmake', ext.cmake_lists_dir] + cmake_args,
+                                  cwd=self.build_temp)
+            subprocess.check_call(['cmake', '--build', '.'],
+                                  cwd=self.build_temp)
+
+
+libffcv = CMakeExtension('ffcv._libffcv')
+
 
 setup(name='ffcv',
       version='1.0.1',
@@ -112,6 +149,7 @@ setup(name='ffcv',
       long_description=long_description,
       long_description_content_type='text/markdown',
       ext_modules=[libffcv],
+      cmdclass={'build_ext': CMakeBuild},
       install_requires=[
           'terminaltables',
           'pytorch_pfn_extras',
