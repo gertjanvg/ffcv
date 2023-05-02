@@ -2,7 +2,7 @@ cmake_minimum_required( VERSION 3.13 )
 
 project(ffcv)
 set(CMAKE_CXX_STANDARD 11)
-set(Python3_FIND_VIRTUALENV ONLY)
+set(Python3_FIND_VIRTUALENV FIRST)
 
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
