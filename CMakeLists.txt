@@ -17,4 +17,9 @@ add_library(ffcv SHARED ${SOURCE_FILES})
 
 target_link_libraries( ffcv PUBLIC ${OpenCV_LIBS} ${Python3_LIBRARIES} libjpeg-turbo::turbojpeg )
 
-set_target_properties( ffcv PROPERTIES LINKER_LANGUAGE C )
+set_target_properties( ffcv
+    PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "_libffcv"
+        LINKER_LANGUAGE C
+        )
