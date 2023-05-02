@@ -99,7 +99,7 @@ else:
 
 
 libffcv = Extension('ffcv._libffcv',
-                        **extension_kwargs)
+                    **extension_kwargs)
 
 setup(name='ffcv',
       version='1.0.1',
